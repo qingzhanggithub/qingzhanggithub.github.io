@@ -1,5 +1,6 @@
 ---
 layout: post
+comments: true
 title:  "Machine Learning with Spark"
 date:   2016-02-03
 categories: machinelearning
@@ -180,3 +181,28 @@ object Pred {
 {%endhighlight%}
 
 Done! We have just built a Hello World classifier. You can see that the process is fairly simple. Of course you would need some more work to transform your data into a tsv in the first place if it is not structured yet, thanks to spark the process could be much simpler than Java Hadoop application. Performance tuning will definitely be involved if you are working on large scaled data. 
+
+{% if page.comments %} 
+<div id="disqus_thread"></div>
+<script>
+    /**
+     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+     */
+    /*
+    var disqus_config = function () {
+        this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    */
+    (function() {  // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+        
+        s.src = '//slowlyspeedingcode.disqus.com/embed.js';
+        
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+{% endif %}
