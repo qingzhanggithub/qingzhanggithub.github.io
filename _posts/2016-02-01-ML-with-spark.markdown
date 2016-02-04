@@ -111,7 +111,7 @@ object Train {
     
     // Save the model and scalar
     sc.parallelize(Seq(scaler), 1).saveAsObjectFile(args(1) + "scaler.model")
-    sc.parallelize(Seq(model), 1).saveAsObjectFile(args(1) + myRandomForestClassificationModel")
+    sc.parallelize(Seq(model), 1).saveAsObjectFile(args(1) + "myRandomForestClassificationModel")
   }
 }
 {%endhighlight%}
@@ -144,6 +144,7 @@ object Pred {
 			 					
 		 	}
 		 			
+	// Load model and scaler
 	val model = sc.objectFile[ org.apache.spark.mllib.tree.model.RandomForestModel](args(1) + "myRandomForestClassificationModel").first()
 	val scaler = sc.objectFile[StandardScalerModel](args(1) + "scaler.model").first()
 		 
