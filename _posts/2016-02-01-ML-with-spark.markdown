@@ -89,7 +89,7 @@ object Train {
     val labelAndPreds = data1.map { point =>
 	    val prediction = model.predict(point._2)
 	      (point._1, prediction)
-	      }
+	    }
     
     val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / data1.count()
     
@@ -143,7 +143,7 @@ object Pred {
 				val dense = Vectors.dense(fields(0).toDouble, fields(1).toDouble, fields(2)toDouble)
 				(LabeledPoint(0, dense), line)
 			 					
-		 		}
+		 	}
 		 			
 	val model = sc.objectFile[ org.apache.spark.mllib.tree.model.RandomForestModel](args(1) + "myRandomForestClassificationModel").first()
 	val scaler = sc.objectFile[StandardScalerModel](args(1) + "scaler.model").first()
@@ -156,7 +156,7 @@ object Pred {
 		   		(pred, e._2)
 		 	}
 		
-	val out = labelAndPreds.map(e => e._2 + "\t" + e._1)
+	val out = labelAndPreds.map(e => e._1 + "\t" + e._2)
 			.repartition(1)
 			.saveAsTextFile(args(1) + "pred")
   }
