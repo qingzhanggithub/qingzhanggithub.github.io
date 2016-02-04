@@ -4,11 +4,25 @@ title:  "Machine Learning with Spark"
 date:   2016-02-03
 categories: machinelearning
 ---
-I've been using spark for machine learning recently and pleasantly found it could simplify a lot of routines. Here I am going to train a classifier from scratch. The input training file is a tsv with the first column as class label. You can easily convert your tsv file into `LabeledPoint`, which is one of the data formats that spark MLlib use.
+I've been using spark for machine learning recently and pleasantly found it could simplify a lot of routines, such as data preprocessing. Here I am going to train a simple classifier from scratch. 
 
 Data Preprocessing
 =========
-First transform the data into the format that is used by spark.
+The input training file is a tsv with the first column as class label. We first transform the data into the a `Vectors.dense`, and then `LabeledPoint` that is used by spark. You may also use other [MLlib](http://spark.apache.org/docs/latest/mllib-guide.html) format such as `Vectors.sparse`. 
+
+{%highlight bash%}
+1	4121	177	78
+1	16492	1148	53
+1	852	31	17
+1	720	21	11
+0	720	177	70
+0	772	169	104
+0	772	28	18
+0	772	30	21
+0	1058	25	12
+0	41933	812	213
+{%endhighlight%}
+
 {%highlight scala%}
 
 import org.apache.spark.mllib.tree.RandomForest
@@ -58,7 +72,7 @@ object Train {
 
   def main(args: Array[String]): Unit = {
     
-    val sc = new SparkContext(new SparkConf().setAppName("Train Model").setMaster("local[1]"))
+    val sc = new SparkContext(new SparkConf().setAppName("Train Model").setMaster("local[1]")) // For local test
     
     // Load and parse the data file.
     val data = MLUtils.loadLabeledData(sc, args(0))
@@ -165,4 +179,4 @@ object Pred {
 
 {%endhighlight%}
 
-Done! You can see that the whole pipeline is fairly simple. Of course you would need some more work to transform your data into a TSV in first place if it is not structured yet. The training and prediction are very convenient. 
+Done! We have just built a Hello World classifier. You can see that the process is fairly simple. Of course you would need some more work to transform your data into a tsv in the first place if it is not structured yet, thanks to spark the process could be much simpler than Java Hadoop application. Performance tuning will definitely be involved if you are working on large scaled data. 
