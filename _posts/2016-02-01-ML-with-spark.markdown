@@ -4,8 +4,7 @@ title:  "Machine Learning with Spark"
 date:   2016-02-03
 categories: machinelearning
 ---
-I am going to demo how to use spark to train a classifier from scratch. The input training file is a tsv with the first column as class label. You can easily convert your tsv file into `LabeledPoint`, which is one of the data formats that spark MLlib use.
-
+I've been using spark for machine learning recently and pleasantly found it could simplify a lot of routines. Here I am going to train a classifier from scratch. The input training file is a tsv with the first column as class label. You can easily convert your tsv file into `LabeledPoint`, which is one of the data formats that spark MLlib use.
 
 Data Preprocessing
 =========
