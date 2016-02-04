@@ -1,25 +1,167 @@
 ---
 layout: post
 title:  "Machine Learning with Spark"
-date:   2016-02-01 12:59:41 -0800
-categories: jekyll update
+date:   2016-02-03
+categories: machinelearning
 ---
-You’ll find this post in your `_posts` directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run `jekyll serve`, which launches a web server and auto-regenerates your site when a file is updated.
+We are going to demo how to use spark to train a classifier from scratch. The input training file is a tsv with the last column as class label. You can easily convert your tsv file into `LabeledPoint`
 
-To add new posts, simply add a file in the `_posts` directory that follows the convention `YYYY-MM-DD-name-of-post.ext` and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.
 
-Jekyll also offers powerful support for code snippets:
+Data Preprocessing
+=========
+First transform the data into the format that is used by spark.
+{%highlight scala%}
 
-{% highlight ruby %}
-def print_hi(name)
-  puts "Hi, #{name}"
-end
-print_hi('Tom')
-#=> prints 'Hi, Tom' to STDOUT.
-{% endhighlight %}
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.SparkConf
+import collection.mutable.HashMap
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+object Feature {
 
-Check out the [Jekyll docs][jekyll-docs] for more info on how to get the most out of Jekyll. File all bugs/feature requests at [Jekyll’s GitHub repo][jekyll-gh]. If you have questions, you can ask them on [Jekyll Talk][jekyll-talk].
+  def main(args: Array[String]): Unit = {
+	val sc = new SparkContext(new SparkConf().setAppName("Feature Extraction").setMaster("local"))
+	val input = args(0)
+	val output = args(1)
+	val data = sc.textFile(args(0)).map{
+			 line =>
+			 	val fields = line.split("\t")  	
+			 	
+			 	// create a dense vector
+			 	val dense = Vectors.dense(fields(1).toDouble, fields(2).toDouble, fields(3).toDouble)
+			 	
+			 	// form a labeled point
+			 	LabeledPoint(fields(0).toDouble, dense)
+		 	}
+		 	.repartition(1)
+	MLUtils.saveLabeledData(data, args(1))
+  }
+}
 
-[jekyll-docs]: http://jekyllrb.com/docs/home
-[jekyll-gh]:   https://github.com/jekyll/jekyll
-[jekyll-talk]: https://talk.jekyllrb.com/
+{%endhighlight%}
+
+Train Model
+========
+Now we use MLlib to train a random forest model.
+{%highlight scala%}
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.SparkConf
+import org.apache.spark.mllib.feature.StandardScaler
+
+
+object Train {
+
+  def main(args: Array[String]): Unit = {
+    
+    val sc = new SparkContext(new SparkConf().setAppName("Train Model").setMaster("local[1]"))
+    
+    // Load and parse the data file.
+    val data = MLUtils.loadLabeledData(sc, args(0))
+    
+    // Split the data into training and test sets (30% held out for testing)
+    val splits = data.randomSplit(Array(0.7, 0.3))
+    val (trainingData, testData) = (splits(0), splits(1))
+    val scaler = new StandardScaler().fit(data.map(trainingData => trainingData.features))
+    
+    // Train a RandomForest model.
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    val numClasses = 2
+    val categoricalFeaturesInfo = Map[Int, Int]()
+    val numTrees = 10 // Use more in practice.
+    val featureSubsetStrategy = "auto" // Let the algorithm choose.
+    val impurity = "gini"
+    val maxDepth = 5
+    val maxBins = 32
+    
+    val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+      
+    // Evaluate model on test instances 
+        
+    val data1 = testData.map(x => (x.label, scaler.transform(x.features)))  
+	  
+    val labelAndPreds = data1.map { point =>
+	    val prediction = model.predict(point._2)
+	      (point._1, prediction)
+	      }
+    
+    val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / data1.count()
+    
+    
+    val tp = labelAndPreds.filter(r=> r._1 == r._2 && r._1==1).coalesce(1).count.toDouble
+    val tn = labelAndPreds.filter(r=> r._1 == r._2 && r._1==0).coalesce(1).count.toDouble
+    val fp = labelAndPreds.filter(r=> r._1== 0 && r._2 == 1).coalesce(1).count.toDouble
+    val fn = labelAndPreds.filter(r=> r._1== 1 && r._2 == 0).coalesce(1).count.toDouble
+    
+    val prec = tp /(tp + fp)
+    val rec = tp/(tp + fn)
+    
+    println("-----------------")
+    println("Learned classification forest model:\n" + model.toDebugString)
+    println("Test Error = " + testErr)
+    println("Prec = " + prec+"\tRecall = "+ rec)
+    println("total data "+ data.count +"\ttp " + tp+" tn "+ tn +" fp " + fp +" fn " + fn)
+    println("-----------------")
+    
+    
+    // Save the model and scalar
+    sc.parallelize(Seq(scaler), 1).saveAsObjectFile(args(1) + "scaler.model")
+    sc.parallelize(Seq(model), 1).saveAsObjectFile(args(1) + myRandomForestClassificationModel")
+  }
+}
+{%endhighlight%}
+
+Make Predictions
+=======
+Now we load new data, and apply our model on them. Make sure you use the scaler to transform the data.
+{%highlight scala%}
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.SparkConf
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.feature.StandardScaler
+import org.apache.spark.mllib.feature.StandardScalerModel
+
+object Pred {
+
+  def main(args: Array[String]): Unit = {
+		 
+	val sc = new SparkContext(new SparkConf().setAppName("Prediction").setMaster("local"))
+		 					
+	val testData = sc.textFile(args(0)).map{ 
+			line =>
+				val fields = line.split("\t")
+				val dense = Vectors.dense(fields(0).toDouble, fields(1).toDouble, fields(2)toDouble)
+				(LabeledPoint(0, dense), line)
+			 					
+		 		}
+		 			
+	val model = sc.objectFile[ org.apache.spark.mllib.tree.model.RandomForestModel](args(1) + "myRandomForestClassificationModel").first()
+	val scaler = sc.objectFile[StandardScalerModel](args(1) + "scaler.model").first()
+		 
+	println("------------ Model Loaded ----------\n"+model.toDebugString)
+		 
+	val labelAndPreds = testData.map { 
+			e =>
+		   		val pred = model.predict(scaler.transform(e._1.features))
+		   		(pred, e._2)
+		 	}
+		
+	val out = labelAndPreds.map(e => e._2 + "\t" + e._1)
+			.repartition(1)
+			.saveAsTextFile(args(1) + "pred")
+  }
+		 
+}
+
+{%endhighlight%}
+

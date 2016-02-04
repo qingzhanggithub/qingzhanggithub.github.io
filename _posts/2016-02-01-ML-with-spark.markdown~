@@ -1,0 +1,48 @@
+---
+layout: post
+title:  "Machine Learning with Spark"
+date:   2016-02-03
+categories: machinelearning
+---
+We are going to demo how to use spark to train a classifier from scratch. The input training file is a tsv with the last column as class label.
+
+
+Data Preprocessing
+=========
+First transform the data into the format that is used by spark.
+{%highlight scala%}
+
+import org.apache.spark.mllib.tree.RandomForest
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.SparkConf
+import collection.mutable.HashMap
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+object Feature {
+
+  def main(args: Array[String]): Unit = {
+	val sc = new SparkContext(new SparkConf().setAppName("Feature Extraction").setMaster("local"))
+	val input = args(0)
+	val output = args(1)
+	val data = sc.textFile(args(0)).map{
+			 line =>
+			 	val fields = line.split("\t")  	
+			 	val dense = Vectors.dense(fields(1).toDouble, fields(1).toDouble, fields(3).toDouble)
+			 	LabeledPoint(fields(0).toDouble, dense)
+		 	}
+		 	.repartition(1)
+	MLUtils.saveLabeledData(data, args(1))
+  }
+}
+
+{%endhighlight%}
+
+
+
+Check out the [Jekyll docs][jekyll-docs] for more info on how to get the most out of Jekyll. File all bugs/feature requests at [Jekyll’s GitHub repo][jekyll-gh]. If you have questions, you can ask them on [Jekyll Talk][jekyll-talk].
+
+[jekyll-docs]: http://jekyllrb.com/docs/home
+[jekyll-gh]:   https://github.com/jekyll/jekyll
+[jekyll-talk]: https://talk.jekyllrb.com/
