@@ -80,8 +80,13 @@ object Train {
     
     // Split the data into training and test sets (30% held out for testing)
     val splits = data.randomSplit(Array(0.7, 0.3))
-    val (trainingData, testData) = (splits(0), splits(1))
-    val scaler = new StandardScaler().fit(data.map(trainingData => trainingData.features))
+    
+    
+    val (trainingDataRaw, testDataRaw) = (splits(0), splits(1))
+    val scaler = new StandardScaler().fit(trainingDataRaw.map(x => x.features))
+   	
+    val trainingData = trainingDataRaw.map(x=> LabeledPoint(x.label, scaler.transform(x.features)))
+    val testingData  = testDataRaw.map(x=> LabeledPoint(x.label, scaler.transform(x.features)))
     
     // Train a RandomForest model.
     // Empty categoricalFeaturesInfo indicates all features are continuous.
@@ -94,16 +99,14 @@ object Train {
     val maxBins = 32
     
     val model = RandomForest.trainClassifier(trainingData, numClasses, categoricalFeaturesInfo,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+	  numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
       
     // Evaluate model on test instances 
-        
-    val data1 = testData.map(x => (x.label, scaler.transform(x.features)))  
 	  
-    val labelAndPreds = data1.map { point =>
-	    val prediction = model.predict(point._2)
-	      (point._1, prediction)
-	    }
+    val labelAndPreds = testingData.map { point =>
+	  val prediction = model.predict(point.features)
+	  (point.label, prediction)
+	}
     
     val testErr = labelAndPreds.filter(r => r._1 != r._2).count.toDouble / data1.count()
     
